@@ -1,65 +1,70 @@
-/* take a bunch of the svg attributes and place them here for the sake of dryness */
-path,
-line {
-  fill: none;
-  stroke: #000;
-  /* stroke-width: 170; */
-  stroke-width: 10;
-
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-miterlimit: 100;
-}
-
-.stroke-P{
-    stroke-dasharray: 18159;
-    animation: write1 4s 1 ease-in-out;
-}
-
-/*  keyframes */
-@keyframes write1 {
+path {
+    fill: none;
+    stroke: #000;
+    stroke-width: 3px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-miterlimit: 10;
+  }
+  ._1P_Path_ {
+    stroke-dasharray: 253;
+    animation: write1 7s linear;
+  }
+  ._2P_Path_ {
+    stroke-dasharray: 550;
+    animation: write2 7s linear;
+  }
+  ._3iyush_Path_ {
+    stroke-dasharray: 1791;
+    animation: write3 7s linear;
+  }
+  ._4Path_ {
+    stroke-dasharray: 502;
+    animation: write4 7s linear;
+  }
+  ._5Path_ {
+    stroke-dasharray: 37;
+    animation: write5 7s linear;
+  }
+  
+  /*  keyframes */
+  @keyframes write1 {
     0% {
-        stroke-dashoffset: 18159;
+        stroke-dashoffset: 253;
+    }
+    15% {
+        stroke-dashoffset: 0;
+    }
+  }
+  @keyframes write2 {
+    0%, 15% {
+        stroke-dashoffset: 550;
     }
     25% {
         stroke-dashoffset: 0;
     }
-}
-
-.stroke-iyus{
-    stroke-dasharray: 30330;
-    animation: write1 6s 1 ease-out;
-}
-@keyframes write2 {
+  }
+  @keyframes write3 {
     0%, 25% {
-        stroke-dashoffset: 30330;
+        stroke-dashoffset: 1791;
     }
-    50% {
+    80% {
         stroke-dashoffset: 0;
     }
-}
-
-.stroke-h{
-    stroke-dasharray: 11920;
-}
-@keyframes write3 {
-    0%, 50% {
-        stroke-dashoffset: 11920;
+  }
+  @keyframes write4 {
+    0%, 55% {
+        stroke-dashoffset: 502;
     }
-    75% {
+    90% {
         stroke-dashoffset: 0;
     }
-}
-.stroke-idot{
-    stroke-dasharray: 915;
-    /* stroke-dashoffset: 1; */
-} 
-
-@keyframes write4 {
-    0%, 75% {
-        stroke-dashoffset: 915;
+  }
+  @keyframes write5 {
+    0%, 70% {
+        stroke-dashoffset: 37;
     }
     100% {
         stroke-dashoffset: 0;
     }
-}
+  }
