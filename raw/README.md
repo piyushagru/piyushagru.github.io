@@ -19,3 +19,6 @@ Important superseding decisions:
 - Every major section should feel like a viewport-sized chapter, but long content must grow naturally and never clip.
 
 Design sheets can contain mock text and placeholders. Use 04-CONTENT-AND-FACTS.md as the factual source. The full downloadable handoff archive contains full-resolution original reference images and prototype assets.
+
+## Binary assets
+The GitHub branch contains the written specifications and decision log. The full-resolution design-sheet PNGs, compressed previews, previous prototype source/ZIP, sparrow GIF, spritesheet source, and generated bird reference are packaged in the companion archive named **portfolio-approved-raw-handoff.zip**. Use that archive together with this folder when handing the project to another AI tool; the archive's internal paths mirror the raw folder structure.
