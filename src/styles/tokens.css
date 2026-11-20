@@ -42,3 +42,6 @@
   --dur-hover: 180ms;
   --dur-reveal: 900ms;
 }
+:root {
+  --sky-fallback: #46536e;
+}
