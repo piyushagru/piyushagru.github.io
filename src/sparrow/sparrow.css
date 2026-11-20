@@ -1,0 +1,4 @@
+.sparrow-cursor-active,
+.sparrow-cursor-active * {
+  cursor: none !important;
+}
