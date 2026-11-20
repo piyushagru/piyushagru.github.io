@@ -1,0 +1,246 @@
+---
+import { ctas, navigation, profile } from '@data/profile';
+---
+
+<header class="site-header" data-reveal="header">
+  <a class="site-header__identity" href="#top" aria-label={`${profile.name}, home`}>
+    <span class="site-header__monogram" aria-hidden="true">{profile.monogram}</span>
+    <span class="site-header__name">{profile.name}</span>
+  </a>
+
+  <button
+    class="site-header__menu-button"
+    type="button"
+    aria-expanded="false"
+    aria-controls="site-nav"
+  >
+    Menu
+  </button>
+
+  <nav class="site-header__nav" id="site-nav" aria-label="Primary navigation" data-open="false">
+    <ul class="site-header__links">
+      {navigation.map((item) => (
+        <li><a href={item.href}>{item.label}</a></li>
+      ))}
+    </ul>
+    <a class="site-header__action" href={ctas.connect.href}>{ctas.connect.label}</a>
+  </nav>
+</header>
+
+<script>
+  const header = document.querySelector<HTMLElement>('.site-header');
+  const trigger = header?.querySelector<HTMLButtonElement>('.site-header__menu-button');
+  const nav = header?.querySelector<HTMLElement>('.site-header__nav');
+
+  if (trigger && nav) {
+    const setOpen = (open: boolean, restoreFocus = false) => {
+      trigger.setAttribute('aria-expanded', String(open));
+      nav.dataset.open = String(open);
+      if (restoreFocus) trigger.focus();
+    };
+
+    trigger.addEventListener('click', () => {
+      setOpen(trigger.getAttribute('aria-expanded') !== 'true');
+    });
+
+    nav.addEventListener('click', (event) => {
+      if ((event.target as Element).closest('a')) setOpen(false);
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && trigger.getAttribute('aria-expanded') === 'true') {
+        setOpen(false, true);
+      }
+    });
+
+    if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('menu')) {
+      requestAnimationFrame(() => setOpen(true));
+    }
+  }
+</script>
+
+<style>
+  .site-header {
+    position: absolute;
+    z-index: 100;
+    top: 0;
+    left: 0;
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    padding:
+      max(1.25rem, env(safe-area-inset-top))
+      max(var(--gutter), env(safe-area-inset-right))
+      1rem
+      max(var(--gutter), env(safe-area-inset-left));
+    color: var(--hero-ink);
+  }
+
+  .site-header__identity {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 0.85rem;
+  }
+
+  .site-header__monogram {
+    font-family: var(--font-display);
+    font-size: var(--step-3);
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+
+  .site-header__name {
+    font-size: var(--step--1);
+    font-weight: 600;
+  }
+
+  .site-header__nav,
+  .site-header__links {
+    display: flex;
+    align-items: center;
+  }
+
+  .site-header__nav {
+    min-width: 0;
+    flex: 1;
+    justify-content: flex-end;
+    gap: clamp(1.5rem, 3vw, 3.5rem);
+  }
+
+  .site-header__links {
+    list-style: none;
+    gap: clamp(1.15rem, 2.4vw, 2.75rem);
+    padding: 0;
+  }
+
+  .site-header__links a {
+    font-size: var(--step--1);
+    text-underline-offset: 0.25em;
+    text-decoration-thickness: 0.08em;
+    transition: text-decoration-color var(--dur-hover) ease;
+    text-decoration-line: underline;
+    text-decoration-color: transparent;
+  }
+
+  .site-header__action {
+    display: inline-flex;
+    min-height: 2.75rem;
+    flex: none;
+    align-items: center;
+    padding: 0.65rem 1.25rem;
+    border-radius: var(--radius-pill);
+    color: var(--ink);
+    background: var(--ivory);
+    font-size: var(--step--1);
+    font-weight: 600;
+    transition:
+      transform var(--dur-press) var(--ease-out),
+      background-color var(--dur-hover) ease;
+  }
+
+  .site-header__action:active {
+    transform: scale(0.98);
+  }
+
+  .site-header__menu-button {
+    display: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .site-header__links a:hover {
+      text-decoration-color: currentColor;
+    }
+
+    .site-header__action:hover {
+      background: var(--sunset);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .site-header {
+      gap: 1rem;
+      padding-top: max(1rem, env(safe-area-inset-top));
+    }
+
+    .site-header__identity {
+      gap: 0.65rem;
+    }
+
+    .site-header__monogram {
+      font-size: 2rem;
+    }
+
+    .site-header__name {
+      display: none;
+    }
+
+    .site-header__menu-button {
+      position: absolute;
+      top: max(1rem, env(safe-area-inset-top));
+      right: max(var(--gutter), env(safe-area-inset-right));
+      display: inline-flex;
+      min-height: 2.75rem;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-pill);
+      color: var(--ink);
+      background: var(--ivory);
+      font-size: var(--step-0);
+      font-weight: 600;
+    }
+
+    .site-header__nav {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      left: 0;
+      display: grid;
+      gap: 1.5rem;
+      padding: 1.5rem max(var(--gutter), env(safe-area-inset-right)) 2rem
+        max(var(--gutter), env(safe-area-inset-left));
+      visibility: hidden;
+      opacity: 0;
+      transform: translateY(-0.75rem);
+      pointer-events: none;
+      background: var(--forest-deep);
+      transition:
+        opacity 180ms var(--ease-out),
+        transform 180ms var(--ease-out),
+        visibility 0s linear 180ms;
+    }
+
+    .site-header__nav[data-open='true'] {
+      visibility: visible;
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+      transition-delay: 0s;
+    }
+
+    .site-header__links {
+      display: grid;
+      gap: 0;
+    }
+
+    .site-header__links a {
+      display: flex;
+      min-height: 3rem;
+      align-items: center;
+      font-size: var(--step-1);
+    }
+
+    .site-header__action {
+      width: fit-content;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .site-header__nav,
+    .site-header__action {
+      transition: none;
+    }
+  }
+</style>
