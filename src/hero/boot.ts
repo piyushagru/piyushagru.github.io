@@ -55,8 +55,10 @@ export const bootHero = async (root: HTMLElement): Promise<void> => {
 
   let unwireScroll = () => {};
   let unwireParallax = () => {};
+  let pointerDemoFrame = 0;
 
   const dispose = () => {
+    cancelAnimationFrame(pointerDemoFrame);
     unwireScroll();
     unwireParallax();
     pointer.dispose();
@@ -71,8 +73,39 @@ export const bootHero = async (root: HTMLElement): Promise<void> => {
     unwireScroll = wireHeroScroll(root, scene);
     unwireParallax = wireHeroParallax(pointer, scene);
     await runOpening({ scene, sparrow, root, reduced });
+    scene.start();
 
     if (import.meta.env.DEV) {
+      console.debug('[hero] steady state active', {
+        scene: 'running',
+        scroll: 'wired',
+        parallax: 'wired',
+        sparrow: sparrow.state,
+      });
+
+      const birdDemo = new URLSearchParams(window.location.search).get('bird');
+      if (birdDemo !== null) {
+        const startedAt = performance.now();
+        const movePointer = (now: number) => {
+          const elapsed = now - startedAt;
+          if (birdDemo === 'leave' && elapsed >= 1200) {
+            root.dispatchEvent(new PointerEvent('pointerleave', {
+              clientX: window.innerWidth * 0.78,
+              clientY: window.innerHeight * 0.32,
+            }));
+            return;
+          }
+          const progress = (elapsed % 5000) / 5000;
+          root.dispatchEvent(new PointerEvent('pointermove', {
+            clientX: window.innerWidth * (0.3 + progress * 0.48),
+            clientY: window.innerHeight * (0.32 + Math.sin(progress * Math.PI * 2) * 0.08),
+            bubbles: true,
+          }));
+          pointerDemoFrame = requestAnimationFrame(movePointer);
+        };
+        movePointer(startedAt);
+      }
+
       window.__hero = { scene, sparrow, pointer, dispose };
     }
   } catch (error) {

@@ -24,13 +24,45 @@ const revealStarts: Record<SceneLayer, number> = {
 const revealDuration = (layer: SceneLayer): number =>
   layer.startsWith('ridge-') ? 900 : 800;
 
+const getLastTextRect = (element: HTMLElement): DOMRect => {
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  let lastText: Text | null = null;
+  let node = walker.nextNode();
+
+  while (node) {
+    if (node.textContent?.trim()) lastText = node as Text;
+    node = walker.nextNode();
+  }
+
+  if (!lastText) return element.getBoundingClientRect();
+  const range = document.createRange();
+  range.selectNodeContents(lastText);
+  return range.getBoundingClientRect();
+};
+
 const getPerch = (root: HTMLElement) => {
   const headline = root.querySelector<HTMLElement>('[data-reveal="headline-2"]');
-  const rect = headline?.getBoundingClientRect() ?? root.getBoundingClientRect();
+  if (!headline) {
+    const rect = root.getBoundingClientRect();
+    return { x: window.innerWidth - 72, y: rect.top + 160 };
+  }
+
+  const lineRect = headline.getBoundingClientRect();
+  const wordRect = getLastTextRect(headline);
+  const headerBottom = root.querySelector<HTMLElement>('[data-reveal="header"]')
+    ?.getBoundingClientRect().bottom ?? 0;
+  const beside = {
+    x: wordRect.right + 28,
+    y: wordRect.top + wordRect.height * 0.52,
+  };
+  const needsAbove = window.innerWidth - wordRect.right < 96 || beside.y - 32 < headerBottom;
+  const point = needsAbove
+    ? { x: wordRect.right, y: lineRect.top - 40 }
+    : beside;
 
   return {
-    x: Math.min(window.innerWidth - 72, rect.right + 44),
-    y: rect.top + rect.height * 0.58,
+    x: Math.min(window.innerWidth - 72, Math.max(72, point.x)),
+    y: Math.max(headerBottom + 40, point.y),
   };
 };
 
@@ -52,7 +84,14 @@ export const runOpening = async ({ scene, sparrow, root, reduced }: OpeningOptio
     return;
   }
 
-  const timeline = createTimeline({ autoplay: false });
+  let resolveTimeline = () => {};
+  const timelineDone = new Promise<void>((resolve) => {
+    resolveTimeline = resolve;
+  });
+  const timeline = createTimeline({
+    autoplay: false,
+    onComplete: resolveTimeline,
+  });
 
   const header = root.querySelector<HTMLElement>('[data-reveal="header"]');
   if (header) {
@@ -115,7 +154,7 @@ export const runOpening = async ({ scene, sparrow, root, reduced }: OpeningOptio
   }
 
   timeline.play();
-  await timeline;
+  await timelineDone;
   await flight;
   if (flightError) throw flightError;
 
