@@ -1,0 +1,156 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Sparrow flight lab" description="A motion study for the portfolio sparrow cursor.">
+  <main class="lab" data-sparrow-bounds>
+    <section class="lab__copy">
+      <h1>Sparrow flight study</h1>
+      <p>Move across the field, slow down, and leave the window to test follow, perch, and return.</p>
+      <nav aria-label="Flight test links">
+        <a href="#flight">Flight path</a>
+        <a href="#landing">Landing point</a>
+        <a href="/">Back to portfolio</a>
+      </nav>
+    </section>
+    <div class="lab__landing" id="landing" aria-hidden="true"></div>
+    <p class="lab__note" id="flight">The bird stays offset so the active target remains clear.</p>
+  </main>
+</Base>
+
+<script>
+  import { hasFinePointer } from '@lib/motion-prefs';
+  import { createPointerTracker } from '@lib/pointer';
+  import { createSparrow } from '@sparrow/index';
+
+  const bounds = document.querySelector<HTMLElement>('[data-sparrow-bounds]');
+  if (!bounds) throw new Error('Sparrow lab bounds are missing');
+
+  const pointer = createPointerTracker(bounds);
+  const sparrow = createSparrow({ bounds, still: false }, pointer);
+  const demo = new URLSearchParams(window.location.search).has('demo');
+  const start = { x: -72, y: window.innerHeight * 0.68 };
+  const landing = { x: window.innerWidth * 0.22, y: window.innerHeight * 0.55 };
+
+  let demoFrame = 0;
+  if (demo) {
+    const demoStartedAt = performance.now();
+    const trace = (now: number) => {
+      const progress = ((now - demoStartedAt) % 9000) / 9000;
+      const x = window.innerWidth * (0.35 + progress * 0.5);
+      const y = window.innerHeight * (0.68 + Math.sin(progress * Math.PI * 2) * 0.13);
+      bounds.dispatchEvent(new PointerEvent('pointermove', { clientX: x, clientY: y, bubbles: true }));
+      demoFrame = requestAnimationFrame(trace);
+    };
+    trace(demoStartedAt);
+    if (hasFinePointer()) {
+      sparrow.follow();
+    } else {
+      cancelAnimationFrame(demoFrame);
+      void sparrow.flyThrough({
+        from: { x: window.innerWidth * 0.35, y: window.innerHeight * 0.75 },
+        to: { x: window.innerWidth * 0.82, y: window.innerHeight * 0.56 },
+        duration: 20000,
+      });
+    }
+  } else {
+    await sparrow.flyIn({ from: start, to: landing, duration: 1200 });
+    sparrow.follow();
+  }
+
+  window.addEventListener('pagehide', () => {
+    cancelAnimationFrame(demoFrame);
+    sparrow.dispose();
+    pointer.dispose();
+  }, { once: true });
+</script>
+
+<style>
+  .lab {
+    position: relative;
+    min-height: 100svh;
+    overflow: hidden;
+    padding: clamp(2rem, 6vw, 6rem);
+    background: var(--sand);
+  }
+
+  .lab__copy {
+    width: min(36rem, 100%);
+  }
+
+  h1 {
+    max-width: 10ch;
+    font-family: var(--font-display);
+    font-size: clamp(3rem, 7vw, 6.5rem);
+    font-weight: 500;
+    letter-spacing: -0.04em;
+    line-height: 0.94;
+  }
+
+  p {
+    max-width: 42ch;
+    margin-top: 2rem;
+    color: var(--ink-soft);
+    font-size: var(--step-0);
+  }
+
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+
+  a {
+    min-height: 2.75rem;
+    padding: 0.65rem 1.15rem;
+    border-radius: var(--radius-pill);
+    background: var(--forest);
+    color: var(--ivory);
+    transition: background-color var(--dur-hover) var(--ease-out);
+  }
+
+  .lab__landing {
+    position: absolute;
+    right: 12vw;
+    bottom: 17vh;
+    width: clamp(10rem, 24vw, 23rem);
+    height: clamp(3rem, 8vw, 7rem);
+    border-radius: 50%;
+    background: var(--sage);
+    opacity: 0.42;
+    transform: perspective(18rem) rotateX(68deg);
+  }
+
+  .lab__note {
+    position: absolute;
+    right: clamp(2rem, 6vw, 6rem);
+    bottom: clamp(2rem, 6vw, 5rem);
+    width: min(18rem, 50vw);
+    text-align: right;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    a:hover {
+      background: var(--forest-deep);
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .lab {
+      padding: 2rem 1.25rem;
+    }
+
+    .lab__note {
+      right: 1.25rem;
+      bottom: 2rem;
+      width: calc(100% - 2.5rem);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    a {
+      transition: none;
+    }
+  }
+</style>
