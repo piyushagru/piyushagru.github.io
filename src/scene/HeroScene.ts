@@ -166,6 +166,7 @@ export class HeroScene implements HeroSceneApi {
       uSecondaryPeakScale: { value: SCENE_CONFIG.secondaryPeakScale },
       uForestSerration: { value: SCENE_CONFIG.forestSerration },
       uNoiseAmount: { value: SCENE_CONFIG.noiseAmount },
+      uAnimateGrain: { value: this.options.still ? 0 : 1 },
       uSunPosition: { value: new Vector2(SCENE_CONFIG.sunDesktop.x, SCENE_CONFIG.sunDesktop.y) },
       uCloudSpeeds: { value: vector3(SCENE_CONFIG.cloudSpeeds) },
       uCloudDepths: { value: vector3(SCENE_CONFIG.cloudDepths) },

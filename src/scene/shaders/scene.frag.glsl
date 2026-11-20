@@ -19,6 +19,7 @@ uniform float uMajorPeakWidth;
 uniform float uSecondaryPeakScale;
 uniform float uForestSerration;
 uniform float uNoiseAmount;
+uniform float uAnimateGrain;
 uniform vec2 uSunPosition;
 uniform vec3 uCloudSpeeds;
 uniform vec3 uCloudDepths;
@@ -133,10 +134,11 @@ float fbm2(vec2 point) {
 float mountainHeight(float x, vec4 settings, float forestDetail) {
   float domain = x * settings.z + settings.w;
   float broad = fbm1(domain * 0.58);
-  float warp = (fbm1(domain * 0.47 + 5.3) - 0.5) * 1.15;
-  float ridged = ridgedFbm1(domain + warp);
-  float spur = ridgedFbm1(domain * 1.83 - warp * 0.55 + 17.2);
-  float warpedX = x + (fbm1(domain * 1.31 + 3.7) - 0.5) * 0.09;
+  float warp = (fbm1(domain * 0.47 + 5.3) - 0.5) * 1.55;
+  warp += (noise1(domain * 1.17 + 29.4) - 0.5) * 0.46;
+  float ridged = pow(clamp(ridgedFbm1(domain + warp) * 1.08, 0.0, 1.0), 1.55);
+  float spur = pow(clamp(ridgedFbm1(domain * 1.83 - warp * 0.62 + 17.2) * 1.12, 0.0, 1.0), 1.7);
+  float warpedX = x + (fbm1(domain * 1.31 + 3.7) - 0.5) * 0.12;
   float majorCenter = fract(settings.w);
   float majorDistance = (warpedX - majorCenter) / uMajorPeakWidth;
   float massif = exp(-majorDistance * majorDistance * 1.7);
@@ -145,19 +147,23 @@ float mountainHeight(float x, vec4 settings, float forestDetail) {
   float secondaryMassif = exp(-secondaryDistance * secondaryDistance * 2.1);
   float serration = 0.0;
   if (forestDetail > 0.0) {
-    float treeDomain = (x + settings.w) * 118.0;
+    float treeFrequency = mix(145.0, 250.0, forestDetail);
+    float treeDomain = (x + settings.w) * treeFrequency;
     float treeCell = floor(treeDomain);
     float treeLocal = fract(treeDomain);
     float treeVariation = hash11(treeCell + settings.w * 17.0);
-    float halfWidth = mix(0.17, 0.3, hash11(treeCell + 4.2));
-    float crown = max(0.0, 1.0 - abs(treeLocal - 0.5) / halfWidth);
-    crown = crown * crown;
-    float treeHeight = uForestSerration * mix(0.48, 1.0, treeVariation);
-    serration = crown * treeHeight;
+    float treeCenter = 0.5 + (hash11(treeCell + 4.2) - 0.5) * 0.2;
+    float halfWidth = mix(0.3, 0.48, hash11(treeCell + 8.6));
+    float lean = (hash11(treeCell + 12.4) - 0.5) * 0.16;
+    float crown = max(0.0, 1.0 - abs(treeLocal - treeCenter - lean) / halfWidth);
+    float shoulder = max(0.0, 1.0 - abs(treeLocal - treeCenter + lean * 0.45) / (halfWidth * 1.34));
+    crown = max(crown * crown, shoulder * shoulder * 0.48);
+    float treeHeight = uForestSerration * mix(0.5, 1.0, treeVariation);
+    serration = crown * treeHeight * mix(0.44, 1.0, forestDetail);
   }
-  float crags = (fbm1(domain * 4.3 + 23.0) - 0.5) * 0.12 * (0.35 + massif);
-  float profile = 0.18 * broad + 0.34 * massif + 0.48 * ridged * massif
-    + uSecondaryPeakScale * secondaryMassif * (0.34 + 0.34 * spur) + 0.12 * spur + crags;
+  float crags = (noise1(domain * 5.3 + 23.0) - 0.5) * 0.15 * (0.32 + massif);
+  float profile = 0.12 * broad + 0.18 * massif + 0.54 * ridged * (0.28 + 0.72 * massif)
+    + uSecondaryPeakScale * secondaryMassif * (0.24 + 0.48 * spur) + 0.2 * spur + crags;
   return settings.x + settings.y * profile + serration * forestDetail;
 }
 
@@ -169,7 +175,7 @@ float ridgeHeight(vec2 uv, vec4 settings, vec2 offset, float reveal, float fores
   float desktop = portraitMix();
   float landscapeX = (uv.x - 0.5) * mix(1.62, 1.0, desktop) + 0.5 + offset.x;
   float compressedAmplitude = mix(uPortraitAmplitudeScale, 1.0, desktop);
-  float portraitLift = (1.0 - desktop) * forestDetail * uPortraitNearLift;
+  float portraitLift = (1.0 - desktop) * forestDetail * forestDetail * uPortraitNearLift;
   vec4 adjusted = vec4(settings.x, settings.y * compressedAmplitude, settings.z, settings.w);
   return mountainHeight(landscapeX, adjusted, forestDetail) + portraitLift + offset.y
     - (1.0 - reveal) * uRevealRise;
@@ -198,9 +204,11 @@ vec3 ridgePaint(
     color *= 1.0 - forest * 0.12 * forestDetail;
   }
   float ridgeSunDistance = distance(vec2(uv.x, height), uSunPosition);
-  float sunContact = exp(-ridgeSunDistance * 8.0);
-  float rim = exp(-abs(uv.y - height) * 420.0) * sunContact;
-  return mix(color, uRimLight, rim * uRidgeGlowStrength * reveal);
+  float sunContact = exp(-ridgeSunDistance * 5.6);
+  float rim = exp(-abs(uv.y - height) * 220.0) * sunContact;
+  float warmedFace = exp(-abs(uv.y - height) * 52.0) * sunContact * 0.11;
+  color = mix(color, uRimLight, warmedFace * uRidgeGlowStrength * reveal);
+  return mix(color, uSunEdge, rim * uRidgeGlowStrength * reveal);
 }
 
 vec3 compositeRidge(
@@ -234,23 +242,62 @@ float cloudDensity(
   float speed,
   float depth,
   float seed,
-  out float sunLighting
+  out float sunLighting,
+  out float heightLighting
 ) {
   vec2 drift = vec2(uTime * speed, 0.0) + uOffsetClouds * depth;
   vec2 movingUv = uv + drift;
-  float verticalWarp = (noise1(movingUv.x * 5.2 + seed) - 0.5) * 0.055;
-  float envelope = exp(-pow((uv.y - band - verticalWarp) * 15.0, 2.0));
-  float bodyMask = smoothstep(0.4, 0.57, fbm1(movingUv.x * 1.7 + seed * 0.31));
-  vec2 domain = vec2(movingUv.x * scale + seed, movingUv.y * scale * 1.55);
-  float billows = fbm2(domain) + noise2(domain * 2.1 + 7.3) * 0.18;
-  float density = smoothstep(0.4, 0.57, billows) * envelope * bodyMask;
+  float clusterFrequency = mix(2.7, 4.4, depth);
+  float clusterPosition = movingUv.x * clusterFrequency + seed;
+  float cell = floor(clusterPosition);
+  float localX = fract(clusterPosition);
+  float centerX = 0.5 + (hash11(cell + seed * 3.7) - 0.5) * 0.16;
+  float halfWidth = mix(0.3, 0.47, hash11(cell + seed * 7.1));
+  float centerY = band + (hash11(cell + seed * 11.3) - 0.5) * 0.09;
+  centerY += (noise1(movingUv.x * 4.1 + seed) - 0.5) * 0.025;
+  float halfHeight = mix(0.045, 0.085, hash11(cell + seed * 13.7));
+  vec2 cloudPoint = vec2(
+    (localX - centerX) / halfWidth,
+    (uv.y - centerY) / halfHeight
+  );
+  float baseLobe = 1.0 - dot(
+    vec2(cloudPoint.x, (cloudPoint.y + 0.28) / 0.68),
+    vec2(cloudPoint.x, (cloudPoint.y + 0.28) / 0.68)
+  );
+  vec2 leftPoint = vec2((cloudPoint.x + 0.42) / 0.58, (cloudPoint.y - 0.02) / 0.82);
+  vec2 crownPoint = vec2((cloudPoint.x + 0.04) / 0.7, (cloudPoint.y - 0.22) / 1.05);
+  vec2 rightPoint = vec2((cloudPoint.x - 0.43) / 0.62, (cloudPoint.y - 0.06) / 0.78);
+  float bodyField = max(
+    baseLobe,
+    max(1.0 - dot(leftPoint, leftPoint), max(1.0 - dot(crownPoint, crownPoint), 1.0 - dot(rightPoint, rightPoint)))
+  );
+  float body = smoothstep(-0.2, 0.28, bodyField);
+  float occupied = step(0.3, hash11(cell + seed * 19.1));
+
+  vec2 domain = vec2(
+    movingUv.x * scale + seed,
+    (uv.y - centerY) * scale * 3.2 + seed * 0.17
+  );
+  float field = fbm2(domain);
+  float edgeDetail = noise2(domain * 2.03 + vec2(7.3, 3.9));
+  float threshold = mix(0.43, 0.5, hash11(cell + seed * 23.9));
+  float densityField = field + edgeDetail * 0.17 + bodyField * 0.08;
+  float billows = smoothstep(threshold - 0.07, threshold + 0.1, densityField);
+  float density = smoothstep(0.12, 0.76, body * billows) * occupied;
+  float sunClearance = smoothstep(
+    uSunRadius * 1.08,
+    uSunRadius * 2.35,
+    length((uv - uSunPosition) * vec2(uAspect, 1.0))
+  );
+  density *= sunClearance;
 
   vec2 gradientStep = vec2(0.075, 0.0);
   float gradientX = noise2(domain + gradientStep) - noise2(domain - gradientStep);
   float gradientY = noise2(domain + gradientStep.yx) - noise2(domain - gradientStep.yx);
-  vec2 outwardNormal = normalize(-vec2(gradientX, gradientY) + vec2(0.0001));
+  vec2 outwardNormal = normalize(-vec2(gradientX, gradientY) + vec2(0.001, 0.08));
   vec2 sunDirection = normalize((uSunPosition - uv) * vec2(uAspect, 1.0));
   sunLighting = max(0.0, dot(outwardNormal, sunDirection));
+  heightLighting = clamp((uv.y - centerY) / halfHeight * 0.5 + 0.5, 0.0, 1.0);
   return density;
 }
 
@@ -265,11 +312,16 @@ vec3 paintCloudPlane(
   float seed
 ) {
   float sunLighting = 0.0;
-  float density = cloudDensity(uv, band, scale, speed, depth, seed, sunLighting);
-  float underside = smoothstep(band + 0.055, band - 0.035, uv.y);
-  float nearSun = smoothstep(0.82, 0.08, distance(uv, uSunPosition));
-  float warmth = clamp(sunLighting * 0.45 + underside * 0.46 + nearSun * 0.34, 0.0, 1.0);
+  float heightLighting = 0.0;
+  float density = cloudDensity(
+    uv, band, scale, speed, depth, seed, sunLighting, heightLighting
+  );
+  float nearSun = smoothstep(0.78, 0.08, distance(uv, uSunPosition));
+  float warmEdge = sunLighting * (0.52 + nearSun * 0.3);
+  float warmUnderside = (1.0 - heightLighting) * (0.24 + nearSun * 0.42);
+  float warmth = clamp(warmEdge + warmUnderside, 0.0, 1.0);
   vec3 cloudColor = mix(uCloudCool, uCloudWarm, warmth);
+  cloudColor = mix(cloudColor, uCloudCool * 1.08, heightLighting * (1.0 - sunLighting) * 0.42);
   return mix(base, cloudColor, density * opacity * uRevealClouds);
 }
 
@@ -311,7 +363,7 @@ void main() {
   vec2 uv = vUv;
   float distantHeight = ridgeHeight(uv, uRidgeDistant, uOffsetDistant, uRevealDistant, 0.0);
   float farHeight = ridgeHeight(uv, uRidgeFar, uOffsetFar, uRevealFar, 0.0);
-  float midHeight = ridgeHeight(uv, uRidgeMid, uOffsetMid, uRevealMid, 0.28);
+  float midHeight = ridgeHeight(uv, uRidgeMid, uOffsetMid, uRevealMid, 0.38);
   float nearHeight = ridgeHeight(uv, uRidgeNear, uOffsetNear, uRevealNear, 1.0);
   float slopeStep = 0.0025;
   float distantSlope = ridgeHeight(
@@ -328,10 +380,12 @@ void main() {
   vec2 sunPosition = uSunPosition + uOffsetSun;
   vec2 fromSun = uv - sunPosition;
   float sunDistance = length(fromSun * vec2(uAspect, 1.0));
-  float horizonRadiance = exp(-sunDistance * 2.9) * exp(-abs(uv.y - sunPosition.y) * 1.6);
-  sky = mix(sky, uHorizonGlow, horizonRadiance * uSunHaloStrength * uRevealSun);
-  float sunGlow = exp(-sunDistance * uSunHaloFalloff) * uSunHaloStrength;
-  sky += uSunEdge * sunGlow * uRevealSun;
+  float horizonRadiance = exp(-sunDistance * 2.45) * exp(-abs(uv.y - sunPosition.y) * 1.35);
+  sky = mix(sky, uHorizonGlow, horizonRadiance * uSunHaloStrength * 0.72 * uRevealSun);
+  float broadHalo = exp(-sunDistance * uSunHaloFalloff);
+  float innerHalo = exp(-sunDistance * uSunHaloFalloff * 2.1);
+  sky = mix(sky, uSunEdge, broadHalo * uSunHaloStrength * 0.42 * uRevealSun);
+  sky += uSunCore * innerHalo * uSunHaloStrength * 0.18 * uRevealSun;
   float sunDisc = 1.0 - smoothstep(uSunRadius * 0.88, uSunRadius, sunDistance);
   float sunLimb = smoothstep(uSunRadius, 0.0, sunDistance);
   sky = mix(sky, mix(uSunEdge, uSunCore, sunLimb), sunDisc * uRevealSun);
@@ -339,7 +393,8 @@ void main() {
   float rayAngle = atan(fromSun.y, fromSun.x);
   float rayBreakup = noise1(length(fromSun) * 13.0 + 4.7);
   float rayBands = pow(max(0.0, sin(rayAngle * 17.0 + rayBreakup * 1.4)), 7.0);
-  float rayFade = smoothstep(0.64, 0.06, sunDistance) * smoothstep(distantHeight + 0.01, distantHeight + 0.08, uv.y);
+  float rayFade = smoothstep(0.7, 0.05, sunDistance)
+    * smoothstep(distantHeight + 0.006, distantHeight + 0.075, uv.y);
   sky += uHorizonGlow * rayBands * rayFade * uRayStrength * uRevealSun;
 
   vec3 color = paintClouds(sky, uv);
@@ -347,7 +402,7 @@ void main() {
   color = paintValleyMist(color, uv, distantHeight, uMistFar);
   color = compositeRidge(color, uv, farHeight, farSlope, uRidgeFar, uFarColor, uRevealFar, 0.48, 0.0, 0.45);
   color = paintValleyMist(color, uv, farHeight, uMistFar);
-  color = compositeRidge(color, uv, midHeight, 0.0, uRidgeMid, uMidColor, uRevealMid, 0.2, 0.28, 0.0);
+  color = compositeRidge(color, uv, midHeight, 0.0, uRidgeMid, uMidColor, uRevealMid, 0.2, 0.38, 0.0);
   color = paintValleyMist(color, uv, midHeight, uMistMid);
   color = compositeRidge(color, uv, nearHeight, 0.0, uRidgeNear, uNearColor, uRevealNear, 0.0, 1.0, 0.0);
   color = paintValleyMist(color, uv, nearHeight, uMistNear);
@@ -357,7 +412,7 @@ void main() {
 
   float grainFrame = floor(uTime * 18.0);
   vec2 grainOffset = vec2(grainFrame * 17.0, grainFrame * 7.0);
-  float grain = (hash21(gl_FragCoord.xy + grainOffset) - 0.5) * uNoiseAmount;
+  float grain = (hash21(gl_FragCoord.xy + grainOffset) - 0.5) * uNoiseAmount * uAnimateGrain;
   color += grain;
   color = pow(max(color, 0.0), vec3(0.96));
   gl_FragColor = vec4(color, 1.0);
