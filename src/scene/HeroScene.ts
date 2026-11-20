@@ -24,6 +24,7 @@ type Uniforms = Record<string, IUniform>;
 const clampUnit = (value: number): number => Math.min(1, Math.max(0, value));
 const color = (hex: number): Color => new Color(hex);
 const vector3 = (values: readonly [number, number, number]): Vector3 => new Vector3(...values);
+const vector4 = (values: readonly [number, number, number, number]): Vector4 => new Vector4(...values);
 
 export class HeroScene implements HeroSceneApi {
   readonly ready: Promise<void>;
@@ -153,6 +154,14 @@ export class HeroScene implements HeroSceneApi {
       uAspect: { value: 1 },
       uRevealRise: { value: SCENE_CONFIG.revealRise },
       uFogStrength: { value: SCENE_CONFIG.fogStrength },
+      uSunRadius: { value: SCENE_CONFIG.sunRadius },
+      uSunHaloFalloff: { value: SCENE_CONFIG.sunHaloFalloff },
+      uSunHaloStrength: { value: SCENE_CONFIG.sunHaloStrength },
+      uRayStrength: { value: SCENE_CONFIG.rayStrength },
+      uRidgeGlowStrength: { value: SCENE_CONFIG.ridgeGlowStrength },
+      uGroundBandHeight: { value: SCENE_CONFIG.groundBandHeight },
+      uPortraitAmplitudeScale: { value: SCENE_CONFIG.portraitAmplitudeScale },
+      uPortraitNearLift: { value: SCENE_CONFIG.portraitNearLift },
       uMajorPeakWidth: { value: SCENE_CONFIG.majorPeakWidth },
       uSecondaryPeakScale: { value: SCENE_CONFIG.secondaryPeakScale },
       uForestSerration: { value: SCENE_CONFIG.forestSerration },
@@ -162,8 +171,11 @@ export class HeroScene implements HeroSceneApi {
       uCloudDepths: { value: vector3(SCENE_CONFIG.cloudDepths) },
       uCloudBands: { value: vector3(SCENE_CONFIG.cloudBands) },
       uCloudScales: { value: vector3(SCENE_CONFIG.cloudScales) },
+      uCloudOpacities: { value: vector3(SCENE_CONFIG.cloudOpacities) },
       uMistSpeed: { value: SCENE_CONFIG.mistSpeed },
-      uMistBand: { value: vector3(SCENE_CONFIG.mistBand) },
+      uMistFar: { value: vector4(SCENE_CONFIG.mistFar) },
+      uMistMid: { value: vector4(SCENE_CONFIG.mistMid) },
+      uMistNear: { value: vector4(SCENE_CONFIG.mistNear) },
       uRidgeDistant: { value: new Vector4(distant.baseline, distant.amplitude, distant.frequency, distant.seed) },
       uRidgeFar: { value: new Vector4(far.baseline, far.amplitude, far.frequency, far.seed) },
       uRidgeMid: { value: new Vector4(mid.baseline, mid.amplitude, mid.frequency, mid.seed) },
@@ -192,6 +204,7 @@ export class HeroScene implements HeroSceneApi {
       uFarColor: { value: color(SCENE_COLORS.far) },
       uMidColor: { value: color(SCENE_COLORS.mid) },
       uNearColor: { value: color(SCENE_COLORS.near) },
+      uGroundColor: { value: color(SCENE_COLORS.ground) },
       uSnowColor: { value: color(SCENE_COLORS.snow) },
       uMistCool: { value: color(SCENE_COLORS.mistCool) },
       uMistWarm: { value: color(SCENE_COLORS.mistWarm) },
