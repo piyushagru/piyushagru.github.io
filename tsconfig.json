@@ -1,0 +1,20 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@data/*": ["src/data/*"],
+      "@styles/*": ["src/styles/*"],
+      "@components/*": ["src/components/*"],
+      "@scene/*": ["src/scene/*"],
+      "@sparrow/*": ["src/sparrow/*"],
+      "@motion/*": ["src/motion/*"],
+      "@lib/*": ["src/lib/*"]
+    },
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": [".astro/types.d.ts", "src/**/*"],
+  "exclude": ["dist", "legacy"]
+}

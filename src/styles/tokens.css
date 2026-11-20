@@ -1,0 +1,44 @@
+/* Design tokens from raw/02-DESIGN-SYSTEM.md. Everything downstream reads these only. */
+:root {
+  /* palette */
+  --sand: #f8f5ee;
+  --ivory: #fbf9f4;
+  --sage: #8ba989;
+  --forest: #506b58;
+  --forest-deep: #2f4537;
+  --mist-blue: #8bacc1;
+  --sunset: #e9b38e;
+  --ink: #1d231f;
+  --ink-soft: #4a524c;
+
+  /* hero sky, text sits on the dusk side of the scene */
+  --hero-ink: #fbf5ec;
+  --hero-ink-soft: rgb(251 245 236 / 0.78);
+
+  /* roles */
+  --ground: var(--sand);
+  --surface: var(--ivory);
+  --accent: var(--forest);
+  --accent-ink: var(--ivory);
+
+  /* type */
+  --font-display: 'Playfair Display Variable', Georgia, serif;
+  --font-text: 'Inter Variable', system-ui, sans-serif;
+  --step--1: clamp(0.875rem, 0.84rem + 0.2vw, 1rem);
+  --step-0: clamp(1rem, 0.95rem + 0.3vw, 1.125rem);
+  --step-1: clamp(1.125rem, 1.05rem + 0.45vw, 1.375rem);
+  --step-3: clamp(1.75rem, 1.4rem + 1.6vw, 2.5rem);
+  --step-5: clamp(2.75rem, 1.6rem + 5.2vw, 6.25rem);
+
+  /* space, one pair of margins for the whole page */
+  --gutter: clamp(1.25rem, 1rem + 2vw, 3rem);
+  --measure: 62ch;
+  --radius-pill: 999px;
+
+  /* motion */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --dur-press: 120ms;
+  --dur-hover: 180ms;
+  --dur-reveal: 900ms;
+}
