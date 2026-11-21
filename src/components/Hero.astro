@@ -1,0 +1,201 @@
+---
+import Button from '@components/Button.astro';
+import SiteHeader from '@components/SiteHeader.astro';
+import { ctas, profile } from '@data/profile';
+---
+
+<script is:inline>
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.documentElement.classList.add('js-opening');
+  }
+</script>
+
+<section id="top" class="hero" data-hero aria-labelledby="hero-title">
+  <canvas class="hero__scene" data-hero-scene aria-hidden="true"></canvas>
+  <SiteHeader />
+
+  <div class="hero__content">
+    <h1 id="hero-title" class="hero__title">
+      <span class="hero__line" data-reveal="headline-1">{profile.hero.headline[0]}</span>
+      <span class="hero__line" data-reveal="headline-2">
+        {profile.hero.headline[1]} <em>{profile.hero.accent}</em>
+      </span>
+    </h1>
+
+    <p class="hero__support" data-reveal="support">{profile.hero.support}</p>
+
+    <div class="hero__actions">
+      <div data-reveal="cta-primary">
+        <Button href={ctas.primary.href} variant="primary">{ctas.primary.label}</Button>
+      </div>
+      <div data-reveal="cta-secondary">
+        <Button href={ctas.secondary.href} variant="secondary">{ctas.secondary.label}</Button>
+      </div>
+    </div>
+  </div>
+
+  <a class="hero__scroll" href="#engineering" data-reveal="scroll-hint">
+    <span>{'Scroll to explore'}</span>
+    <svg viewBox="0 0 12 30" width="12" height="30" aria-hidden="true">
+      <path d="M6 1v28m0 0-4-4m4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.25"></path>
+    </svg>
+  </a>
+</section>
+
+<script>
+  import { bootHero } from '../hero/boot';
+
+  const root = document.querySelector<HTMLElement>('[data-hero]');
+  if (root) void bootHero(root);
+</script>
+
+<style>
+  .hero {
+    position: relative;
+    display: grid;
+    min-height: 100svh;
+    overflow: clip;
+    color: var(--hero-ink);
+    background: var(--sky-fallback);
+  }
+
+  .hero__scene {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    background: var(--sky-fallback);
+  }
+
+  .hero__content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    align-self: start;
+    padding:
+      clamp(10rem, 23svh, 13rem)
+      max(var(--gutter), env(safe-area-inset-right))
+      clamp(8rem, 17svh, 11rem)
+      max(var(--gutter), env(safe-area-inset-left));
+  }
+
+  .hero__title {
+    max-width: 15ch;
+    font-family: var(--font-display);
+    font-size: min(var(--step-5), 5.75vw);
+    font-weight: 450;
+    font-kerning: normal;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin-left: -0.035em;
+  }
+
+  .hero__line {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+
+  .hero__title em {
+    font-weight: inherit;
+  }
+
+  .hero__support {
+    max-width: 48ch;
+    margin-top: clamp(2rem, 3vw, 3rem);
+    color: var(--hero-ink);
+    font-size: var(--step-1);
+    line-height: 1.5;
+    text-wrap: pretty;
+  }
+
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+    margin-top: 2rem;
+  }
+
+  .hero__scroll {
+    position: absolute;
+    z-index: 2;
+    bottom: max(1.5rem, env(safe-area-inset-bottom));
+    left: 50%;
+    display: grid;
+    justify-items: center;
+    gap: 0.6rem;
+    color: var(--hero-ink);
+    font-size: var(--step--1);
+    transform: translateX(-50%);
+  }
+
+  .hero__scroll svg {
+    animation: scroll-prompt 2.4s var(--ease-in-out) infinite;
+  }
+
+  :global(.js-opening) .hero :global([data-reveal]) {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  :global(.js-opening) .hero .hero__scroll {
+    transform: translate(-50%, 24px);
+  }
+
+  @keyframes scroll-prompt {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(0.35rem);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .hero__content {
+      padding-top: clamp(9.5rem, 22svh, 11.5rem);
+      padding-bottom: 9rem;
+    }
+
+    .hero__title {
+      max-width: none;
+      font-size: min(var(--step-5), 6vw);
+      line-height: 1.02;
+      letter-spacing: -0.03em;
+    }
+
+    .hero__support {
+      max-width: 36ch;
+      margin-top: 2rem;
+      font-size: var(--step-0);
+    }
+
+    .hero__actions {
+      display: grid;
+      width: 100%;
+      max-width: 24rem;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .hero__actions > div,
+    .hero__actions :global(.button) {
+      width: 100%;
+    }
+
+    .hero__scroll {
+      bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero__scroll svg {
+      animation: none;
+    }
+  }
+</style>

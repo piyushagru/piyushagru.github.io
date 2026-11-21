@@ -1,0 +1,93 @@
+---
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="robots" content="noindex" />
+    <title>Hero scene lab</title>
+  </head>
+  <body>
+    <main>
+      <canvas id="hero-scene" aria-hidden="true"></canvas>
+    </main>
+    <script>
+      import { SCENE_LAYERS } from '@lib/contracts';
+      import { createHeroScene } from '@scene/index';
+
+      const canvas = document.querySelector<HTMLCanvasElement>('#hero-scene');
+      if (!canvas) {
+        throw new Error('Hero scene canvas is missing');
+      }
+
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const scene = createHeroScene(canvas, { still: reduceMotion });
+      void scene.ready.then(() => {
+        window.setTimeout(() => {
+          for (const layer of SCENE_LAYERS) {
+            scene.setReveal(layer, 1);
+          }
+          scene.start();
+        }, 100);
+      });
+
+      window.addEventListener('pointermove', (event) => {
+        scene.setParallax(
+          (event.clientX / window.innerWidth) * 2 - 1,
+          (event.clientY / window.innerHeight) * 2 - 1,
+        );
+      }, { passive: true });
+
+      if (new URLSearchParams(window.location.search).has('perf')) {
+        const frameDeltas: number[] = [];
+        const startedAt = performance.now();
+        let previousFrame = startedAt;
+        const sample = (now: number): void => {
+          frameDeltas.push(now - previousFrame);
+          previousFrame = now;
+          if (now - startedAt < 2000) {
+            requestAnimationFrame(sample);
+            return;
+          }
+          const measured = frameDeltas.slice(1);
+          const average = measured.reduce((sum, value) => sum + value, 0) / measured.length;
+          document.title = `scene-perf: ${average.toFixed(2)}ms (${(1000 / average).toFixed(1)}fps)`;
+          console.info(document.title);
+        };
+        requestAnimationFrame(sample);
+      }
+
+      window.addEventListener('pagehide', () => scene.dispose(), { once: true });
+    </script>
+  </body>
+</html>
+
+<style>
+  :global(*) {
+    box-sizing: border-box;
+  }
+
+  :global(html),
+  :global(body),
+  main,
+  canvas {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+  }
+
+  :global(body) {
+    overflow: hidden;
+    background: #747f9f;
+  }
+
+  main {
+    position: fixed;
+    inset: 0;
+  }
+
+  canvas {
+    display: block;
+  }
+</style>
