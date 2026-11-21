@@ -11,11 +11,13 @@ import {
   Vector3,
   Vector4,
   WebGLRenderer,
+  WebGLRenderTarget,
   type IUniform,
 } from 'three';
 import type { HeroSceneApi, HeroSceneOptions, SceneLayer } from '@lib/contracts';
 import { LayerRegistry } from './LayerRegistry';
 import { SCENE_COLORS, SCENE_CONFIG } from './scene.config';
+import cloudFragmentShader from './shaders/cloud.frag.glsl?raw';
 import fragmentShader from './shaders/scene.frag.glsl?raw';
 import vertexShader from './shaders/scene.vert.glsl?raw';
 
@@ -33,11 +35,18 @@ export class HeroScene implements HeroSceneApi {
   private readonly clock = new Clock(false);
   private readonly targetParallax = new Vector2();
   private readonly currentParallax = new Vector2();
+  private readonly cloudRenderTarget = new WebGLRenderTarget(1, 1, {
+    depthBuffer: false,
+    stencilBuffer: false,
+  });
   private readonly uniforms: Uniforms;
+  private readonly cloudUniforms: Uniforms;
   private readonly scene = new Scene();
+  private readonly cloudScene = new Scene();
   private readonly camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
   private readonly geometry = new PlaneGeometry(2, 2);
   private readonly material: ShaderMaterial;
+  private readonly cloudMaterial: ShaderMaterial;
   private readonly resizeObserver: ResizeObserver | undefined;
   private readonly maxPixelRatio: number;
   private renderer: WebGLRenderer | undefined;
@@ -57,10 +66,18 @@ export class HeroScene implements HeroSceneApi {
     });
     this.maxPixelRatio = options.maxPixelRatio ?? SCENE_CONFIG.maxPixelRatio;
     this.uniforms = this.createUniforms();
+    this.cloudUniforms = this.createCloudUniforms();
     this.material = new ShaderMaterial({
       vertexShader,
       fragmentShader,
       uniforms: this.uniforms,
+      depthTest: false,
+      depthWrite: false,
+    });
+    this.cloudMaterial = new ShaderMaterial({
+      vertexShader,
+      fragmentShader: cloudFragmentShader,
+      uniforms: this.cloudUniforms,
       depthTest: false,
       depthWrite: false,
     });
@@ -73,8 +90,10 @@ export class HeroScene implements HeroSceneApi {
         powerPreference: 'high-performance',
       });
       this.renderer.outputColorSpace = SRGBColorSpace;
+      this.cloudScene.add(new Mesh(this.geometry, this.cloudMaterial));
       this.scene.add(new Mesh(this.geometry, this.material));
       this.resize();
+      this.renderer.compile(this.cloudScene, this.camera);
       this.renderer.compile(this.scene, this.camera);
       this.renderFrame(SCENE_CONFIG.stillFrameDelta, false);
       this.resolveReady();
@@ -138,6 +157,8 @@ export class HeroScene implements HeroSceneApi {
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
     this.geometry.dispose();
     this.material.dispose();
+    this.cloudMaterial.dispose();
+    this.cloudRenderTarget.dispose();
     this.renderer?.dispose();
     this.renderer = undefined;
   }
@@ -161,12 +182,14 @@ export class HeroScene implements HeroSceneApi {
       uRidgeGlowStrength: { value: SCENE_CONFIG.ridgeGlowStrength },
       uGroundBandHeight: { value: SCENE_CONFIG.groundBandHeight },
       uPortraitAmplitudeScale: { value: SCENE_CONFIG.portraitAmplitudeScale },
-      uPortraitNearLift: { value: SCENE_CONFIG.portraitNearLift },
+      uPortraitLandscapeWidth: { value: SCENE_CONFIG.portraitLandscapeWidth },
+      uPortraitRidgeLifts: { value: vector4(SCENE_CONFIG.portraitRidgeLifts) },
       uMajorPeakWidth: { value: SCENE_CONFIG.majorPeakWidth },
       uSecondaryPeakScale: { value: SCENE_CONFIG.secondaryPeakScale },
       uForestSerration: { value: SCENE_CONFIG.forestSerration },
       uNoiseAmount: { value: SCENE_CONFIG.noiseAmount },
       uAnimateGrain: { value: this.options.still ? 0 : 1 },
+      uCloudTexture: { value: this.cloudRenderTarget.texture },
       uSunPosition: { value: new Vector2(SCENE_CONFIG.sunDesktop.x, SCENE_CONFIG.sunDesktop.y) },
       uCloudSpeeds: { value: vector3(SCENE_CONFIG.cloudSpeeds) },
       uCloudDepths: { value: vector3(SCENE_CONFIG.cloudDepths) },
@@ -215,6 +238,26 @@ export class HeroScene implements HeroSceneApi {
     };
   }
 
+  private createCloudUniforms(): Uniforms {
+    return {
+      uTime: this.uniforms.uTime!,
+      uAspect: this.uniforms.uAspect!,
+      uRevealClouds: this.uniforms.uRevealClouds!,
+      uSunRadius: this.uniforms.uSunRadius!,
+      uSunPosition: this.uniforms.uSunPosition!,
+      uOffsetClouds: this.uniforms.uOffsetClouds!,
+      uCloudSpeeds: this.uniforms.uCloudSpeeds!,
+      uCloudDepths: this.uniforms.uCloudDepths!,
+      uCloudBands: this.uniforms.uCloudBands!,
+      uCloudScales: this.uniforms.uCloudScales!,
+      uCloudOpacities: this.uniforms.uCloudOpacities!,
+      uCloudCool: this.uniforms.uCloudCool!,
+      uCloudWarm: this.uniforms.uCloudWarm!,
+      uCloudAnisotropy: { value: SCENE_CONFIG.cloudAnisotropy },
+      uCloudDensity: { value: SCENE_CONFIG.cloudDensity },
+    };
+  }
+
   private resize(): void {
     if (!this.renderer || this.disposed) {
       return;
@@ -225,7 +268,12 @@ export class HeroScene implements HeroSceneApi {
     const pixelRatio = Math.min(window.devicePixelRatio || 1, this.maxPixelRatio);
     this.renderer.setPixelRatio(pixelRatio);
     this.renderer.setSize(width, height, false);
-    this.renderer.getDrawingBufferSize(this.uniforms.uResolution!.value as Vector2);
+    const drawingBufferSize = this.uniforms.uResolution!.value as Vector2;
+    this.renderer.getDrawingBufferSize(drawingBufferSize);
+    this.cloudRenderTarget.setSize(
+      Math.max(1, Math.floor(drawingBufferSize.x * SCENE_CONFIG.cloudResolutionScale)),
+      Math.max(1, Math.floor(drawingBufferSize.y * SCENE_CONFIG.cloudResolutionScale)),
+    );
     const aspect = width / height;
     this.uniforms.uAspect!.value = aspect;
     const desktopWeight = clampUnit(
@@ -261,6 +309,9 @@ export class HeroScene implements HeroSceneApi {
       this.elapsedTime += delta;
       this.uniforms.uTime!.value = this.elapsedTime;
     }
+    this.renderer.setRenderTarget(this.cloudRenderTarget);
+    this.renderer.render(this.cloudScene, this.camera);
+    this.renderer.setRenderTarget(null);
     this.renderer.render(this.scene, this.camera);
   }
 

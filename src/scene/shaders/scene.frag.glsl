@@ -14,7 +14,8 @@ uniform float uRayStrength;
 uniform float uRidgeGlowStrength;
 uniform float uGroundBandHeight;
 uniform float uPortraitAmplitudeScale;
-uniform float uPortraitNearLift;
+uniform float uPortraitLandscapeWidth;
+uniform vec4 uPortraitRidgeLifts;
 uniform float uMajorPeakWidth;
 uniform float uSecondaryPeakScale;
 uniform float uForestSerration;
@@ -69,6 +70,7 @@ uniform vec3 uMistWarm;
 uniform vec3 uCloudCool;
 uniform vec3 uCloudWarm;
 uniform vec3 uRimLight;
+uniform sampler2D uCloudTexture;
 
 float hash11(float value) {
   return fract(sin(value * 127.1) * 43758.5453123);
@@ -171,11 +173,18 @@ float portraitMix() {
   return smoothstep(0.74, 1.1, uAspect);
 }
 
-float ridgeHeight(vec2 uv, vec4 settings, vec2 offset, float reveal, float forestDetail) {
+float ridgeHeight(
+  vec2 uv,
+  vec4 settings,
+  vec2 offset,
+  float reveal,
+  float forestDetail,
+  float portraitRidgeLift
+) {
   float desktop = portraitMix();
-  float landscapeX = (uv.x - 0.5) * mix(1.62, 1.0, desktop) + 0.5 + offset.x;
+  float landscapeX = (uv.x - 0.5) * mix(uPortraitLandscapeWidth, 1.0, desktop) + 0.5 + offset.x;
   float compressedAmplitude = mix(uPortraitAmplitudeScale, 1.0, desktop);
-  float portraitLift = (1.0 - desktop) * forestDetail * forestDetail * uPortraitNearLift;
+  float portraitLift = (1.0 - desktop) * portraitRidgeLift;
   vec4 adjusted = vec4(settings.x, settings.y * compressedAmplitude, settings.z, settings.w);
   return mountainHeight(landscapeX, adjusted, forestDetail) + portraitLift + offset.y
     - (1.0 - reveal) * uRevealRise;
@@ -361,16 +370,26 @@ vec3 paintValleyMist(vec3 base, vec2 uv, float ridgeHeightValue, vec4 settings) 
 
 void main() {
   vec2 uv = vUv;
-  float distantHeight = ridgeHeight(uv, uRidgeDistant, uOffsetDistant, uRevealDistant, 0.0);
-  float farHeight = ridgeHeight(uv, uRidgeFar, uOffsetFar, uRevealFar, 0.0);
-  float midHeight = ridgeHeight(uv, uRidgeMid, uOffsetMid, uRevealMid, 0.38);
-  float nearHeight = ridgeHeight(uv, uRidgeNear, uOffsetNear, uRevealNear, 1.0);
+  float distantHeight = ridgeHeight(
+    uv, uRidgeDistant, uOffsetDistant, uRevealDistant, 0.0, uPortraitRidgeLifts.x
+  );
+  float farHeight = ridgeHeight(
+    uv, uRidgeFar, uOffsetFar, uRevealFar, 0.0, uPortraitRidgeLifts.y
+  );
+  float midHeight = ridgeHeight(
+    uv, uRidgeMid, uOffsetMid, uRevealMid, 0.38, uPortraitRidgeLifts.z
+  );
+  float nearHeight = ridgeHeight(
+    uv, uRidgeNear, uOffsetNear, uRevealNear, 1.0, uPortraitRidgeLifts.w
+  );
   float slopeStep = 0.0025;
   float distantSlope = ridgeHeight(
-    uv + vec2(slopeStep, 0.0), uRidgeDistant, uOffsetDistant, uRevealDistant, 0.0
+    uv + vec2(slopeStep, 0.0), uRidgeDistant, uOffsetDistant,
+    uRevealDistant, 0.0, uPortraitRidgeLifts.x
   ) - distantHeight;
   float farSlope = ridgeHeight(
-    uv + vec2(slopeStep, 0.0), uRidgeFar, uOffsetFar, uRevealFar, 0.0
+    uv + vec2(slopeStep, 0.0), uRidgeFar, uOffsetFar,
+    uRevealFar, 0.0, uPortraitRidgeLifts.y
   ) - farHeight;
 
   float horizon = smoothstep(0.0, 1.0, uv.y);
@@ -397,7 +416,8 @@ void main() {
     * smoothstep(distantHeight + 0.006, distantHeight + 0.075, uv.y);
   sky += uHorizonGlow * rayBands * rayFade * uRayStrength * uRevealSun;
 
-  vec3 color = paintClouds(sky, uv);
+  vec4 cloudLayer = texture2D(uCloudTexture, uv);
+  vec3 color = cloudLayer.rgb + sky * (1.0 - cloudLayer.a);
   color = compositeRidge(color, uv, distantHeight, distantSlope, uRidgeDistant, uDistantColor, uRevealDistant, 0.78, 0.0, 0.9);
   color = paintValleyMist(color, uv, distantHeight, uMistFar);
   color = compositeRidge(color, uv, farHeight, farSlope, uRidgeFar, uFarColor, uRevealFar, 0.48, 0.0, 0.45);
